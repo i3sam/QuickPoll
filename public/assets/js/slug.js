@@ -6,7 +6,8 @@ export const SLUG_MAX = 40;
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
 
 const RESERVED = new Set([
-  'about', 'admin', 'api', 'assets', 'help', 'login', 'new', 'poll', 'polls', 'privacy', 'settings', 'signup', 'terms',
+  'about', 'admin', 'api', 'assets', 'community', 'explore', 'help', 'login', 'new', 'poll', 'polls', 'privacy',
+  'settings', 'signup', 'terms',
 ]);
 
 export function isValidSlug(value) {

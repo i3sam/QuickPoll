@@ -5,22 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Not found · QuickPoll</title>
   <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#ffffff">
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap">
   <link rel="stylesheet" href="/assets/css/app.css">
 </head>
 <body>
   <header class="top">
-    <a class="brand" href="/" aria-label="QuickPoll home">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#4b3cf5"/><rect x="8" y="9" width="16" height="3.6" rx="1.8" fill="#fff"/><rect x="8" y="14.2" width="11" height="3.6" rx="1.8" fill="#fff" opacity=".72"/><rect x="8" y="19.4" width="6" height="3.6" rx="1.8" fill="#fff" opacity=".45"/></svg>
-      QuickPoll
-    </a>
+    <div class="top-inner">
+      <a class="brand" href="/">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#111"/><rect x="8" y="9" width="16" height="3.6" rx="1.8" fill="#fff"/><rect x="8" y="14.2" width="11" height="3.6" rx="1.8" fill="#fff"/><rect x="8" y="19.4" width="6" height="3.6" rx="1.8" fill="#fff"/></svg>
+        QuickPoll
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="/">Create</a>
+        <a href="/community">Community</a>
+      </nav>
+    </div>
   </header>
 
   <main class="page">
-    <section class="card missing">
+    <section class="missing">
       <h1>Nothing here</h1>
       <p>This page doesn't exist. Poll links look like quickpoll.essam.biz/maple.</p>
       <a class="primary" href="/">Make a poll</a>

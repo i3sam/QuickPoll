@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Community · QuickPoll</title>
+  <meta name="description" content="Public polls from everyone. Vote on anything, or post your own.">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <script type="module" src="/assets/js/community.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to the polls</a>
+
+  <header class="top">
+    <div class="top-inner">
+      <a class="brand" href="/">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#111"/><rect x="8" y="9" width="16" height="3.6" rx="1.8" fill="#fff"/><rect x="8" y="14.2" width="11" height="3.6" rx="1.8" fill="#fff"/><rect x="8" y="19.4" width="6" height="3.6" rx="1.8" fill="#fff"/></svg>
+        QuickPoll
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="/">Create</a>
+        <a href="/community" aria-current="page">Community</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="page">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Community</h1>
+        <p class="page-sub">Public polls from everyone. Vote on anything, or post your own.</p>
+      </div>
+      <a class="button" href="/?public">Post a poll</a>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Sort polls">
+      <button type="button" role="tab" aria-selected="true" data-sort="new">New</button>
+      <button type="button" role="tab" aria-selected="false" data-sort="top">Popular</button>
+    </div>
+
+    <ul id="feed" class="feed"></ul>
+
+    <div id="feed-loading" aria-busy="true" aria-label="Loading polls">
+      <div class="feed-item">
+        <div class="skeleton-line is-title"></div>
+        <div class="skeleton-line is-row"></div>
+        <div class="skeleton-line is-row"></div>
+      </div>
+    </div>
+
+    <div id="feed-empty" class="feed-empty" hidden>
+      <p>No public polls right now.</p>
+      <a class="primary" href="/?public">Post the first one</a>
+    </div>
+
+    <p id="feed-error" class="form-error" role="alert" hidden></p>
+    <button class="button load-more" type="button" id="load-more" hidden>Load more</button>
+  </main>
+
+  <footer class="foot">
+    <div class="foot-inner">
+      <span>Free and <a href="https://github.com/i3sam/QuickPoll" rel="noopener">open source</a></span>
+      <span>Made by <a href="https://essam.biz" rel="noopener">essam.biz</a></span>
+    </div>
+  </footer>
+
+  <dialog id="confirm" aria-labelledby="confirm-title" aria-describedby="confirm-body">
+    <form method="dialog">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-body"></p>
+      <div class="dialog-actions">
+        <button class="button" value="cancel">Cancel</button>
+        <button class="primary" value="confirm" id="confirm-action"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

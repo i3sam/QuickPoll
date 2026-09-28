@@ -1,7 +1,5 @@
 export const $ = (selector, root = document) => root.querySelector(selector);
 
-export const LETTERS = 'ABCDEFGHIJ';
-
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;

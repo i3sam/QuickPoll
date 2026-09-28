@@ -21,8 +21,6 @@ const CONTENT_TYPES = {
 // Kept in sync with vercel.json by a test.
 export const PAGE_CSP = [
   "default-src 'self'",
-  "style-src 'self' https://fonts.googleapis.com",
-  "font-src https://fonts.gstatic.com",
   "img-src 'self' data:",
   "object-src 'none'",
   "base-uri 'none'",
@@ -44,6 +42,7 @@ export async function serveStatic(req, res, pathname) {
 function resolvePublicPath(pathname) {
   if (pathname === '/') return path.join(PUBLIC_DIR, 'index.html');
   if (pathname === '/robots.txt') return path.join(PUBLIC_DIR, 'robots.txt');
+  if (pathname === '/community') return path.join(PUBLIC_DIR, 'community.html');
   if (isValidSlug(pathname.slice(1))) return path.join(PUBLIC_DIR, 'poll.html');
 
   if (pathname.startsWith('/assets/')) {

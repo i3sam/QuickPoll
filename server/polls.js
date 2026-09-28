@@ -34,7 +34,14 @@ export function parsePollInput(body) {
     throw invalid('Links use 3 to 40 lowercase letters, numbers and dashes.');
   }
 
-  return { question, options, multiple: body.multiple === true, duration, slug: hasSlug ? body.slug : null };
+  return {
+    question,
+    options,
+    multiple: body.multiple === true,
+    public: body.public === true,
+    duration,
+    slug: hasSlug ? body.slug : null,
+  };
 }
 
 export function parseVote(body, poll) {
@@ -70,6 +77,7 @@ export function toPublicPoll({ poll, counts, voters, myVote }, now = Date.now())
     slug: poll.slug,
     question: poll.question,
     multiple: poll.multiple,
+    public: poll.public === true,
     createdAt: poll.createdAt,
     closesAt: poll.closedAt ?? poll.closesAt,
     closed: isClosed(poll, now),

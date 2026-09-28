@@ -1,6 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import QRCode from 'qrcode';
-import { DEFAULT_DURATION, DURATIONS, LIMITS } from './config.js';
+import { COMMUNITY, DEFAULT_DURATION, DURATIONS, LIMITS } from './config.js';
 import { HttpError, clientIp, readJson, sendJson } from './http.js';
 import { isClosed, isVoterId, parsePollInput, parseVote, toPublicPoll } from './polls.js';
 import { RateLimiter } from './rate-limit.js';
@@ -15,7 +15,10 @@ const MAX_QR_LENGTH = 512;
 export function createApi({ store, config }) {
   const requestLimit = new RateLimiter({ windowMs: 60_000, max: 300 });
   const createLimit = store.limiter({ name: 'create', windowMs: 10 * 60_000, max: 20 });
+  // Public polls show up for everyone, so fewer of them per person.
+  const publicLimit = store.limiter({ name: 'public', windowMs: 60 * 60_000, max: 5 });
   const voteLimit = store.limiter({ name: 'vote', windowMs: 60_000, max: 30 });
+  const reportLimit = store.limiter({ name: 'report', windowMs: 10 * 60_000, max: 20 });
   // One-word links are easy to guess, so looking up links that don't exist
   // (or asking whether one is taken) has a much tighter budget.
   const lookupLimit = store.limiter({ name: 'lookup', windowMs: 10 * 60_000, max: 100 });
@@ -24,11 +27,13 @@ export function createApi({ store, config }) {
     .on('GET', '/api/config', getConfig)
     .on('GET', '/api/qr', getQrCode)
     .on('GET', '/api/slugs/:slug', checkSlug)
+    .on('GET', '/api/community', listCommunity)
     .on('POST', '/api/polls', createPoll)
     .on('GET', '/api/polls/:slug', getPoll)
     .on('DELETE', '/api/polls/:slug', deletePoll)
     .on('POST', '/api/polls/:slug/votes', vote)
-    .on('POST', '/api/polls/:slug/close', closePoll);
+    .on('POST', '/api/polls/:slug/close', closePoll)
+    .on('POST', '/api/polls/:slug/report', reportPoll);
 
   return async function handleApi(req, res, url) {
     res.setHeader('X-Robots-Tag', 'noindex');
@@ -71,6 +76,9 @@ export function createApi({ store, config }) {
     }
 
     const input = parsePollInput(await readJson(req, MAX_JSON_BYTES));
+    if (input.public && !(await publicLimit.take(ip))) {
+      throw new HttpError(429, 'You can post 5 polls to Community an hour. Make this one private, or try later.');
+    }
     if (input.slug && (await store.isTaken(input.slug))) {
       throw new HttpError(409, 'That link is already taken.');
     }
@@ -82,6 +90,7 @@ export function createApi({ store, config }) {
       question: input.question,
       options: input.options,
       multiple: input.multiple,
+      public: input.public,
       createdAt: now,
       closesAt: now + input.duration * 1000,
       closedAt: null,
@@ -115,6 +124,32 @@ export function createApi({ store, config }) {
 
     const entry = await requirePoll(params.slug, voter);
     sendJson(res, recorded ? 201 : 200, { ...toPublicPoll(entry), alreadyVoted: !recorded });
+  }
+
+  async function listCommunity({ res, url }) {
+    const sort = url.searchParams.get('sort') === 'top' ? 'top' : 'new';
+    const offset = Math.min(Math.max(Number.parseInt(url.searchParams.get('offset'), 10) || 0, 0), 1000);
+    const voter = url.searchParams.get('voter');
+
+    const { entries, next } = await store.listPublic({
+      sort,
+      offset,
+      limit: COMMUNITY.pageSize,
+      voter: isVoterId(voter) ? voter : null,
+    });
+    sendJson(res, 200, { polls: entries.map((entry) => toPublicPoll(entry)), next });
+  }
+
+  async function reportPoll({ req, res, params, ip }) {
+    const { poll } = await requirePoll(params.slug);
+    if (!(await reportLimit.take(ip))) {
+      throw new HttpError(429, 'Too many reports. Try again in a few minutes.');
+    }
+
+    const body = await readJson(req, MAX_JSON_BYTES);
+    if (!isVoterId(body?.voter)) throw new HttpError(400, 'Missing voter id.');
+    if (poll.public) await store.report(poll, body.voter, COMMUNITY.reportsToHide);
+    res.writeHead(204).end();
   }
 
   async function closePoll({ req, res, params }) {
@@ -156,18 +191,25 @@ export function createApi({ store, config }) {
     if (!entry) throw notFound();
     return entry;
   }
+
+  // The poll's own key, or the site owner's key (OWNER_KEY) for moderation.
+  function requireAdmin(req, poll) {
+    const header = req.headers.authorization ?? '';
+    const key = header.startsWith('Bearer ') ? header.slice(7) : '';
+    const hash = hashKey(key);
+    const matches =
+      key !== '' &&
+      (sameHash(hash, poll.adminHash) || (config.ownerKey !== null && sameHash(hash, hashKey(config.ownerKey))));
+    if (!matches) throw new HttpError(403, 'Only the person who made this poll can change it.');
+  }
 }
 
 function notFound() {
   return new HttpError(404, 'This poll does not exist or has been removed.');
 }
 
-function requireAdmin(req, poll) {
-  const header = req.headers.authorization ?? '';
-  const key = header.startsWith('Bearer ') ? header.slice(7) : '';
-  const matches =
-    key !== '' && timingSafeEqual(Buffer.from(hashKey(key), 'hex'), Buffer.from(poll.adminHash, 'hex'));
-  if (!matches) throw new HttpError(403, 'Only the person who made this poll can change it.');
+function sameHash(a, b) {
+  return timingSafeEqual(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'));
 }
 
 function hashKey(key) {

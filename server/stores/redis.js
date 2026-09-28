@@ -1,9 +1,14 @@
 import { HttpError } from '../http.js';
-import { keepUntil } from '../polls.js';
+import { isClosed, keepUntil } from '../polls.js';
 
 const pollKey = (slug) => `poll:${slug}`;
 const countsKey = (slug) => `poll:${slug}:counts`;
 const votersKey = (slug) => `poll:${slug}:voters`;
+const reportsKey = (slug) => `poll:${slug}:reports`;
+
+// Public polls, scored by creation time and by number of voters.
+const FEED_NEW = 'community:new';
+const FEED_TOP = 'community:top';
 
 // Records a vote only if this voter hasn't voted yet, as one atomic step.
 // KEYS: counts, voters. ARGV: voter, their choices as JSON, keep-until (ms),
@@ -16,8 +21,8 @@ redis.call('PEXPIREAT', KEYS[2], ARGV[3])
 return 1
 `;
 
-// Runs on Vercel with Upstash Redis. Every key expires by itself once a
-// poll's results are no longer kept, so nothing needs cleaning up.
+// Runs on Vercel with Upstash Redis. Poll keys expire by themselves once a
+// poll's results are no longer kept; the feeds drop stale entries as they're read.
 export class RedisStore {
   #redis;
 
@@ -29,19 +34,8 @@ export class RedisStore {
 
   async get(slug, voter = null) {
     const pipeline = this.#redis.pipeline();
-    pipeline.get(pollKey(slug));
-    pipeline.hgetall(countsKey(slug));
-    pipeline.hlen(votersKey(slug));
-    if (voter) pipeline.hget(votersKey(slug), voter);
-    const [poll, counts, voters, myVote] = await pipeline.exec();
-    if (!poll) return null;
-
-    return {
-      poll,
-      counts: poll.options.map((_, index) => Number(counts?.[index] ?? 0)),
-      voters: Number(voters) || 0,
-      myVote: Array.isArray(myVote) ? myVote : null,
-    };
+    queueRead(pipeline, slug, voter);
+    return toEntry(await pipeline.exec());
   }
 
   async isTaken(slug) {
@@ -51,15 +45,27 @@ export class RedisStore {
   async create(poll) {
     const result = await this.#redis.set(pollKey(poll.slug), poll, { nx: true, pxat: keepUntil(poll) });
     if (result !== 'OK') throw new HttpError(409, 'That link is already taken.');
+
+    if (poll.public) {
+      await Promise.all([
+        this.#redis.zadd(FEED_NEW, { score: poll.createdAt, member: poll.slug }),
+        this.#redis.zadd(FEED_TOP, { score: 0, member: poll.slug }),
+      ]);
+    }
   }
 
   async vote(poll, voter, choices) {
-    const recorded = await this.#redis.eval(
-      VOTE_SCRIPT,
-      [countsKey(poll.slug), votersKey(poll.slug)],
-      [voter, JSON.stringify(choices), String(keepUntil(poll)), ...choices.map(String)],
-    );
-    return Number(recorded) === 1;
+    const recorded =
+      Number(
+        await this.#redis.eval(
+          VOTE_SCRIPT,
+          [countsKey(poll.slug), votersKey(poll.slug)],
+          [voter, JSON.stringify(choices), String(keepUntil(poll)), ...choices.map(String)],
+        ),
+      ) === 1;
+
+    if (recorded && poll.public && !poll.hidden) await this.#redis.zincrby(FEED_TOP, 1, poll.slug);
+    return recorded;
   }
 
   // Closing early also brings forward when the poll is removed.
@@ -69,11 +75,55 @@ export class RedisStore {
     pipeline.set(pollKey(poll.slug), poll, { xx: true, pxat: until });
     pipeline.pexpireat(countsKey(poll.slug), until);
     pipeline.pexpireat(votersKey(poll.slug), until);
+    pipeline.zrem(FEED_NEW, poll.slug);
+    pipeline.zrem(FEED_TOP, poll.slug);
     await pipeline.exec();
   }
 
   async delete(slug) {
-    await this.#redis.del(pollKey(slug), countsKey(slug), votersKey(slug));
+    await Promise.all([
+      this.#redis.del(pollKey(slug), countsKey(slug), votersKey(slug), reportsKey(slug)),
+      this.#removeFromFeeds([slug]),
+    ]);
+  }
+
+  async listPublic({ sort, offset, limit, voter = null, now = Date.now() }) {
+    const slugs = await this.#redis.zrange(sort === 'top' ? FEED_TOP : FEED_NEW, offset, offset + limit - 1, {
+      rev: true,
+    });
+    if (slugs.length === 0) return { entries: [], next: null };
+
+    const pipeline = this.#redis.pipeline();
+    for (const slug of slugs) queueRead(pipeline, slug, voter);
+    const replies = await pipeline.exec();
+
+    const entries = [];
+    const stale = [];
+    slugs.forEach((slug, index) => {
+      const entry = toEntry(replies.slice(index * 4, index * 4 + 4));
+      if (entry && !entry.poll.hidden && !isClosed(entry.poll, now)) entries.push(entry);
+      else stale.push(slug);
+    });
+    if (stale.length > 0) await this.#removeFromFeeds(stale);
+
+    return { entries, next: slugs.length === limit ? offset + limit : null };
+  }
+
+  async report(poll, voter, threshold) {
+    const key = reportsKey(poll.slug);
+    const pipeline = this.#redis.pipeline();
+    pipeline.sadd(key, voter);
+    pipeline.scard(key);
+    pipeline.pexpireat(key, keepUntil(poll));
+    const [, count] = await pipeline.exec();
+
+    if (Number(count) >= threshold && !poll.hidden) {
+      poll.hidden = true;
+      await Promise.all([
+        this.#redis.set(pollKey(poll.slug), poll, { xx: true, pxat: keepUntil(poll) }),
+        this.#removeFromFeeds([poll.slug]),
+      ]);
+    }
   }
 
   async sweep() {
@@ -85,6 +135,28 @@ export class RedisStore {
   }
 
   async flush() {}
+
+  async #removeFromFeeds(slugs) {
+    await Promise.all([this.#redis.zrem(FEED_NEW, ...slugs), this.#redis.zrem(FEED_TOP, ...slugs)]);
+  }
+}
+
+// Four commands per poll, read back by toEntry.
+function queueRead(pipeline, slug, voter) {
+  pipeline.get(pollKey(slug));
+  pipeline.hgetall(countsKey(slug));
+  pipeline.hlen(votersKey(slug));
+  pipeline.hget(votersKey(slug), voter ?? '-');
+}
+
+function toEntry([poll, counts, voters, myVote]) {
+  if (!poll) return null;
+  return {
+    poll,
+    counts: poll.options.map((_, index) => Number(counts?.[index] ?? 0)),
+    voters: Number(voters) || 0,
+    myVote: Array.isArray(myVote) ? myVote : null,
+  };
 }
 
 class RedisRateLimiter {

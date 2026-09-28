@@ -10,6 +10,7 @@ test('cleans up a poll and drops empty options', () => {
     question: 'Lunch?',
     options: ['Tacos', 'Sushi'],
     multiple: false,
+    public: false,
     duration: 7 * 24 * 60 * 60,
     slug: null,
   });

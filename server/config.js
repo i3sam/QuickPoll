@@ -22,12 +22,20 @@ export const LIMITS = Object.freeze({
   maxOptions: 10,
 });
 
+export const COMMUNITY = Object.freeze({
+  pageSize: 20,
+  // A public poll leaves the Community feed once this many people report it.
+  reportsToHide: 3,
+});
+
 export function loadConfig(env = process.env) {
   return Object.freeze({
     port: readInt(env, 'PORT', 3000),
     host: env.HOST || '0.0.0.0',
     dataDir: path.resolve(env.DATA_DIR || 'data'),
     trustProxy: Boolean(env.VERCEL) || env.TRUST_PROXY === 'true',
+    // Lets the site owner close or delete any poll, for moderation.
+    ownerKey: env.OWNER_KEY || null,
   });
 }
 

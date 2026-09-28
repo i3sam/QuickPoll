@@ -13,7 +13,7 @@ let base;
 
 before(async () => {
   const store = new MemoryStore();
-  server = http.createServer(createApp({ store, config: loadConfig({}) }));
+  server = http.createServer(createApp({ store, config: loadConfig({ OWNER_KEY: 'owner-secret' }) }));
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   base = `http://127.0.0.1:${server.address().port}`;
 });
@@ -93,6 +93,56 @@ test('only the creator can close or delete a poll', async () => {
   assert.equal((await call(`/api/polls/${poll.slug}`, { method: 'DELETE' })).status, 403);
   assert.equal((await call(`/api/polls/${poll.slug}`, { method: 'DELETE', key: poll.adminKey })).status, 204);
   assert.equal((await call(`/api/polls/${poll.slug}`)).status, 404);
+});
+
+test('public polls show up in Community, private ones never do', async () => {
+  const { data: shared } = await createPoll({ question: 'Best tea?', public: true });
+  const { data: hidden } = await createPoll({ question: 'Just us?' });
+
+  const { data } = await call(`/api/community?voter=${voterA}`);
+  const slugs = data.polls.map((poll) => poll.slug);
+  assert.ok(slugs.includes(shared.slug));
+  assert.ok(!slugs.includes(hidden.slug));
+  assert.equal(data.polls[0].slug, shared.slug);
+  assert.equal(data.polls[0].public, true);
+
+  await call(`/api/polls/${shared.slug}/votes`, { method: 'POST', body: { voter: voterA, choices: [0] } });
+  const { data: top } = await call(`/api/community?sort=top&voter=${voterA}`);
+  assert.equal(top.polls[0].slug, shared.slug);
+  assert.deepEqual(top.polls[0].myVote, [0]);
+});
+
+test('three reports take a poll out of Community', async () => {
+  const { data: poll } = await createPoll({ question: 'Spam?', public: true });
+  const inFeed = async () => (await call('/api/community')).data.polls.some((entry) => entry.slug === poll.slug);
+
+  for (const voter of [voterA, voterA, voterB]) {
+    await call(`/api/polls/${poll.slug}/report`, { method: 'POST', body: { voter } });
+  }
+  assert.equal(await inFeed(), true, 'the same person reporting twice counts once');
+
+  await call(`/api/polls/${poll.slug}/report`, { method: 'POST', body: { voter: 'voter-cccccccccccccccccccc' } });
+  assert.equal(await inFeed(), false);
+  assert.equal((await call(`/api/polls/${poll.slug}`)).status, 200, 'the link itself still works');
+});
+
+test('closed polls leave Community', async () => {
+  const { data: poll } = await createPoll({ question: 'Closing soon?', public: true });
+  await call(`/api/polls/${poll.slug}/close`, { method: 'POST', key: poll.adminKey });
+  const { data } = await call('/api/community');
+  assert.ok(!data.polls.some((entry) => entry.slug === poll.slug));
+});
+
+test('the site owner key can remove any poll', async () => {
+  const { data: poll } = await createPoll({ question: 'Remove me?', public: true });
+  const removed = await call(`/api/polls/${poll.slug}`, { method: 'DELETE', key: 'owner-secret' });
+  assert.equal(removed.status, 204);
+});
+
+test('serves the Community page', async () => {
+  const page = await fetch(`${base}/community`);
+  assert.equal(page.status, 200);
+  assert.match(await page.text(), /community\.js/);
 });
 
 test('serves the poll page for one-word links and a 404 page otherwise', async () => {

@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { HttpError } from '../http.js';
-import { keepUntil } from '../polls.js';
+import { isClosed, keepUntil } from '../polls.js';
 import { RateLimiter } from '../rate-limit.js';
 
 // Keeps polls in memory and, when given a folder, saves them to a JSON file
@@ -27,21 +27,14 @@ export class MemoryStore {
       if (error.code === 'ENOENT') return;
       throw error;
     }
-    for (const { poll, counts, voters } of saved) {
-      this.#polls.set(poll.slug, { poll, counts, voters: new Map(voters) });
+    for (const { poll, counts, voters, reports = [] } of saved) {
+      this.#polls.set(poll.slug, { poll, counts, voters: new Map(voters), reports: new Set(reports) });
     }
   }
 
   async get(slug, voter = null, now = Date.now()) {
     const entry = this.#live(slug, now);
-    if (!entry) return null;
-
-    return {
-      poll: { ...entry.poll },
-      counts: [...entry.counts],
-      voters: entry.voters.size,
-      myVote: (voter && entry.voters.get(voter)) ?? null,
-    };
+    return entry ? view(entry, voter) : null;
   }
 
   async isTaken(slug) {
@@ -50,7 +43,12 @@ export class MemoryStore {
 
   async create(poll) {
     if (this.#live(poll.slug)) throw new HttpError(409, 'That link is already taken.');
-    this.#polls.set(poll.slug, { poll: { ...poll }, counts: poll.options.map(() => 0), voters: new Map() });
+    this.#polls.set(poll.slug, {
+      poll: { ...poll },
+      counts: poll.options.map(() => 0),
+      voters: new Map(),
+      reports: new Set(),
+    });
     this.#save();
   }
 
@@ -74,6 +72,30 @@ export class MemoryStore {
 
   async delete(slug) {
     this.#polls.delete(slug);
+    this.#save();
+  }
+
+  // Open public polls, newest first or with the most votes first.
+  async listPublic({ sort, offset, limit, voter = null, now = Date.now() }) {
+    const open = [...this.#polls.values()].filter(
+      ({ poll }) => poll.public && !poll.hidden && !isClosed(poll, now) && keepUntil(poll) > now,
+    );
+    const newest = (a, b) => b.poll.createdAt - a.poll.createdAt;
+    open.sort(sort === 'top' ? (a, b) => b.voters.size - a.voters.size || newest(a, b) : newest);
+
+    const page = open.slice(offset, offset + limit);
+    return {
+      entries: page.map((entry) => view(entry, voter)),
+      next: offset + limit < open.length ? offset + limit : null,
+    };
+  }
+
+  // Each voter id counts once. Enough reports take the poll out of the feed.
+  async report(poll, voter, threshold) {
+    const entry = this.#live(poll.slug);
+    if (!entry) return;
+    entry.reports.add(voter);
+    if (entry.reports.size >= threshold) entry.poll.hidden = true;
     this.#save();
   }
 
@@ -115,10 +137,11 @@ export class MemoryStore {
     try {
       while (this.#dirty) {
         this.#dirty = false;
-        const data = [...this.#polls.values()].map(({ poll, counts, voters }) => ({
+        const data = [...this.#polls.values()].map(({ poll, counts, voters, reports }) => ({
           poll,
           counts,
           voters: [...voters],
+          reports: [...reports],
         }));
         const temp = `${this.#file}.tmp`;
         await fs.writeFile(temp, JSON.stringify(data));
@@ -130,4 +153,13 @@ export class MemoryStore {
       this.#saving = null;
     }
   }
+}
+
+function view(entry, voter) {
+  return {
+    poll: { ...entry.poll },
+    counts: [...entry.counts],
+    voters: entry.voters.size,
+    myVote: (voter && entry.voters.get(voter)) ?? null,
+  };
 }

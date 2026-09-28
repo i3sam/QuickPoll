@@ -1,7 +1,7 @@
 import { api } from './api.js';
 import { rememberPoll, savedPolls, takeNotice } from './device.js';
 import { isValidSlug, normalizeSlug } from './slug.js';
-import { $, LETTERS, formatRemaining, toast } from './ui.js';
+import { $, formatRemaining, toast } from './ui.js';
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 10;
@@ -29,6 +29,8 @@ function init() {
 
   $('#link-prefix').textContent = `${location.host}/`;
   if (/Mac|iPhone|iPad/.test(navigator.platform)) $('#mod-key').textContent = '⌘';
+  // The Community page links here with ?public to start a public poll.
+  if (new URLSearchParams(location.search).has('public')) $('#public').checked = true;
 
   question.addEventListener('input', onQuestionInput);
   fitQuestion();
@@ -70,8 +72,8 @@ function onQuestionInput() {
   fitQuestion();
 
   const left = QUESTION_MAX - question.value.length;
-  questionCount.textContent = left <= 40 ? `${left} left` : '';
-  questionCount.classList.toggle('is-near', left <= 40);
+  questionCount.textContent = `${left} characters left`;
+  questionCount.hidden = left > 40;
   hideError();
 }
 
@@ -85,7 +87,8 @@ function fitQuestion() {
     height = question.scrollHeight;
     question.value = '';
   }
-  question.style.height = `${height}px`;
+  const borders = question.offsetHeight - question.clientHeight;
+  question.style.height = `${height + borders}px`;
 }
 
 /* Options */
@@ -102,9 +105,9 @@ function addOption(value = '', after = null) {
   const row = document.createElement('li');
   row.className = 'option-row';
   row.innerHTML = `
-    <span class="option-key" aria-hidden="true"></span>
-    <input type="text" maxlength="100" autocomplete="off" enterkeyhint="next">
-    <button type="button" class="icon-button remove-option">
+    <span class="option-number" aria-hidden="true"></span>
+    <input class="input" type="text" maxlength="100" autocomplete="off" enterkeyhint="next">
+    <button type="button" class="remove-option">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
     </button>`;
   const input = row.querySelector('input');
@@ -131,16 +134,16 @@ function removeOption(row) {
 function relabel() {
   const rows = optionRows();
   rows.forEach((row, index) => {
-    const letter = LETTERS[index];
-    row.querySelector('.option-key').textContent = letter;
+    const number = index + 1;
+    row.querySelector('.option-number').textContent = number;
 
     const input = row.querySelector('input');
-    input.placeholder = EXAMPLES[index] ?? `Option ${letter}`;
-    input.setAttribute('aria-label', `Option ${letter}`);
+    input.placeholder = EXAMPLES[index] ?? `Option ${number}`;
+    input.setAttribute('aria-label', `Option ${number}`);
 
     const remove = row.querySelector('.remove-option');
     const removable = rows.length > MIN_OPTIONS;
-    remove.setAttribute('aria-label', `Remove option ${letter}`);
+    remove.setAttribute('aria-label', `Remove option ${number}`);
     remove.setAttribute('aria-hidden', String(!removable));
     remove.tabIndex = removable ? 0 : -1;
   });
@@ -284,6 +287,7 @@ function collect() {
       .map((input) => input.value.trim())
       .filter(Boolean),
     multiple: $('#multiple').checked,
+    public: $('#public').checked,
     duration: Number(form.elements.duration.value),
     slug: $('#custom-link').open && slug ? slug : null,
   };
