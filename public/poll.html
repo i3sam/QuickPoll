@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>QuickPoll</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#12110f" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <script type="module" src="/assets/js/poll.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to the poll</a>
+
+  <header class="top">
+    <a class="brand" href="/" aria-label="QuickPoll home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#4b3cf5"/><rect x="8" y="9" width="16" height="3.6" rx="1.8" fill="#fff"/><rect x="8" y="14.2" width="11" height="3.6" rx="1.8" fill="#fff" opacity=".72"/><rect x="8" y="19.4" width="6" height="3.6" rx="1.8" fill="#fff" opacity=".45"/></svg>
+      QuickPoll
+    </a>
+    <a class="top-link" href="/">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      New poll
+    </a>
+  </header>
+
+  <main id="main" class="page">
+    <div id="loading" class="card" aria-busy="true" aria-label="Loading poll">
+      <div class="skeleton-line is-title"></div>
+      <div class="skeleton-line is-row"></div>
+      <div class="skeleton-line is-row"></div>
+      <div class="skeleton-line is-row"></div>
+    </div>
+
+    <article id="poll" class="card poll" hidden>
+      <div class="poll-top">
+        <span id="status" class="status"><span class="status-dot" aria-hidden="true"></span><span id="status-text">Live</span></span>
+        <span id="countdown" class="countdown"></span>
+      </div>
+      <h1 id="question" class="question"></h1>
+      <p id="poll-hint" class="poll-hint"></p>
+
+      <form id="vote-form" class="vote-form">
+        <fieldset>
+          <legend id="choices-legend" class="visually-hidden"></legend>
+          <ul id="choices" class="choices"></ul>
+        </fieldset>
+        <p id="vote-error" class="form-error" role="alert" hidden></p>
+        <div class="vote-bar">
+          <button class="primary" type="submit" id="vote-button" disabled>Vote</button>
+          <button class="text-button" type="button" id="show-results">See results without voting</button>
+        </div>
+      </form>
+
+      <div id="results" hidden>
+        <ul id="results-list" class="results-list"></ul>
+        <div class="results-foot">
+          <span id="total" class="total"></span>
+          <button class="text-button" type="button" id="back-to-vote" hidden>Back to voting</button>
+        </div>
+      </div>
+    </article>
+
+    <section id="share" class="card share" hidden aria-labelledby="share-title">
+      <h2 id="share-title">Share this poll</h2>
+      <p id="share-note" class="share-note" hidden>Your poll is live. Send the link to get votes.</p>
+      <div class="share-link">
+        <span id="share-url" class="share-url"></span>
+        <button class="primary" type="button" id="copy">Copy</button>
+      </div>
+      <div class="share-actions">
+        <button class="chip" type="button" id="native-share" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>
+          Share
+        </button>
+        <a class="chip" id="whatsapp" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20.5l1.7-5.2A8.5 8.5 0 1 1 21 11.5Z"/></svg>
+          WhatsApp
+        </a>
+        <button class="chip" type="button" id="qr-button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3zM20 14v.01M14 20v.01M17 20h4v-3"/></svg>
+          QR code
+        </button>
+      </div>
+    </section>
+
+    <section id="manage" class="card manage" hidden aria-labelledby="manage-title">
+      <h2 id="manage-title">You made this poll</h2>
+      <p>Only this browser can close or delete it.</p>
+      <div class="manage-actions">
+        <button class="chip" type="button" id="close-poll">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          Close voting
+        </button>
+        <button class="chip danger" type="button" id="delete-poll">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>
+          Delete poll
+        </button>
+      </div>
+    </section>
+
+    <section id="missing" class="card missing" hidden>
+      <svg class="missing-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="currentColor" opacity=".08"/><rect x="8" y="9" width="16" height="3.6" rx="1.8" fill="currentColor" opacity=".3"/><rect x="8" y="14.2" width="11" height="3.6" rx="1.8" fill="currentColor" opacity=".22"/><rect x="8" y="19.4" width="6" height="3.6" rx="1.8" fill="currentColor" opacity=".15"/></svg>
+      <h1 id="missing-title">This poll isn't here</h1>
+      <p id="missing-text">It may have been deleted, or the link has a typo.</p>
+      <a class="primary" href="/">Make a new poll</a>
+    </section>
+  </main>
+
+  <footer class="foot">
+    QuickPoll is <a href="https://github.com/i3sam/QuickPoll" rel="noopener">open source</a>. Made by <a href="https://essam.biz" rel="noopener">essam.biz</a>
+  </footer>
+
+  <dialog id="qr-dialog" aria-labelledby="qr-title">
+    <h2 id="qr-title">Scan to vote</h2>
+    <p>Point a phone camera at the code to open this poll.</p>
+    <div class="qr-box"><img id="qr-image" alt="QR code for this poll" width="224" height="224"></div>
+    <p id="qr-url" class="qr-url"></p>
+    <form method="dialog"><button class="chip is-wide" value="close">Done</button></form>
+  </dialog>
+
+  <dialog id="confirm" aria-labelledby="confirm-title" aria-describedby="confirm-body">
+    <form method="dialog">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-body"></p>
+      <div class="dialog-actions">
+        <button class="chip" value="cancel">Cancel</button>
+        <button class="primary" value="confirm" id="confirm-action"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

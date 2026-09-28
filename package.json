@@ -1,0 +1,22 @@
+{
+  "name": "quickpoll",
+  "version": "1.0.0",
+  "description": "Make a poll in seconds, share the link, and watch the votes come in live.",
+  "license": "MIT",
+  "author": "Essam (https://essam.biz)",
+  "homepage": "https://quickpoll.essam.biz",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --env-file-if-exists=.env.local --watch server/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.39.0",
+    "qrcode": "^1.5.4"
+  }
+}
