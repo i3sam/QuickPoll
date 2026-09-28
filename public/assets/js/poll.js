@@ -1,6 +1,14 @@
 import { api } from './api.js';
 import { adminKeyFor, forgetPoll, setNotice, updateSavedPoll, voterId } from './device.js';
-import { renderChoices, renderResults, selectedChoices, syncChoices, updateResults, voteSummary } from './poll-view.js';
+import {
+  authorName,
+  renderChoices,
+  renderResults,
+  selectedChoices,
+  syncChoices,
+  updateResults,
+  voteSummary,
+} from './poll-view.js';
 import { $, confirmAction, copyText, formatRemaining, openDialog, timeAgo, toast } from './ui.js';
 
 const REFRESH_MS = 4000;
@@ -52,6 +60,7 @@ function render() {
   $('#question').textContent = poll.question;
   $('#choices-legend').textContent = poll.question;
   $('#public-tag').hidden = !poll.public;
+  $('#author').textContent = authorName(poll);
   pollArticle.classList.toggle('is-multiple', poll.multiple);
 
   choices = renderChoices(poll, 'choice');

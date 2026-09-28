@@ -6,9 +6,12 @@ import { isClosed, isVoterId, parsePollInput, parseVote, toPublicPoll } from './
 import { RateLimiter } from './rate-limit.js';
 import { Router } from './router.js';
 import { isValidSlug, randomWord, randomWordWithNumber } from './slug.js';
+import { STARTER_POLLS } from './starter-polls.js';
 
 const MAX_JSON_BYTES = 16 * 1024;
 const MAX_QR_LENGTH = 512;
+const MINUTE = 60_000;
+const DAY = 24 * 60 * MINUTE;
 
 // The routes are the same everywhere; `store` decides where polls live
 // (a local JSON file, or Upstash Redis on Vercel).
@@ -22,6 +25,7 @@ export function createApi({ store, config }) {
   // One-word links are easy to guess, so looking up links that don't exist
   // (or asking whether one is taken) has a much tighter budget.
   const lookupLimit = store.limiter({ name: 'lookup', windowMs: 10 * 60_000, max: 100 });
+  let seeding = null;
 
   const router = new Router()
     .on('GET', '/api/config', getConfig)
@@ -91,6 +95,7 @@ export function createApi({ store, config }) {
       options: input.options,
       multiple: input.multiple,
       public: input.public,
+      author: input.author,
       createdAt: now,
       closesAt: now + input.duration * 1000,
       closedAt: null,
@@ -131,6 +136,7 @@ export function createApi({ store, config }) {
     const offset = Math.min(Math.max(Number.parseInt(url.searchParams.get('offset'), 10) || 0, 0), 1000);
     const voter = url.searchParams.get('voter');
 
+    await addStarterPolls();
     const { entries, next } = await store.listPublic({
       sort,
       offset,
@@ -168,6 +174,37 @@ export function createApi({ store, config }) {
     requireAdmin(req, poll);
     await store.delete(poll.slug);
     res.writeHead(204).end();
+  }
+
+  // Runs once for the life of the site (the store remembers it), the first
+  // time anyone opens Community. They start with no votes.
+  function addStarterPolls() {
+    if (!config.starterPolls) return;
+    seeding ??= postStarterPolls().catch((error) => {
+      seeding = null;
+      throw error;
+    });
+    return seeding;
+  }
+
+  async function postStarterPolls(now = Date.now()) {
+    if (!(await store.claimSeed())) return;
+
+    for (const [index, starter] of STARTER_POLLS.entries()) {
+      await store.create({
+        slug: await uniqueSlug(),
+        question: starter.question,
+        options: starter.options,
+        multiple: starter.multiple === true,
+        public: true,
+        author: starter.author,
+        // Spaced out so the New tab has an order, and each stays open a few weeks.
+        createdAt: now - (index + 1) * 83 * MINUTE,
+        closesAt: now + (14 + ((index * 3) % 16)) * DAY,
+        closedAt: null,
+        adminHash: hashKey(randomBytes(24).toString('base64url')),
+      });
+    }
   }
 
   async function uniqueSlug() {

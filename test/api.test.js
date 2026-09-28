@@ -13,7 +13,8 @@ let base;
 
 before(async () => {
   const store = new MemoryStore();
-  server = http.createServer(createApp({ store, config: loadConfig({ OWNER_KEY: 'owner-secret' }) }));
+  const config = loadConfig({ OWNER_KEY: 'owner-secret', STARTER_POLLS: 'false' });
+  server = http.createServer(createApp({ store, config }));
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   base = `http://127.0.0.1:${server.address().port}`;
 });
@@ -112,6 +113,20 @@ test('public polls show up in Community, private ones never do', async () => {
   assert.deepEqual(top.polls[0].myVote, [0]);
 });
 
+test('public polls can carry a name, private ones never do', async () => {
+  const named = await createPoll({ question: 'Named?', public: true, author: '  Sarah  ' });
+  assert.equal(named.data.author, 'Sarah');
+
+  const anonymous = await createPoll({ question: 'Anonymous?', public: true, author: '' });
+  assert.equal(anonymous.data.author, null);
+
+  const private_ = await createPoll({ question: 'Private?', author: 'Sarah' });
+  assert.equal(private_.data.author, null);
+
+  const tooLong = await createPoll({ question: 'Long name?', public: true, author: 'x'.repeat(31) });
+  assert.equal(tooLong.status, 400);
+});
+
 test('three reports take a poll out of Community', async () => {
   const { data: poll } = await createPoll({ question: 'Spam?', public: true });
   const inFeed = async () => (await call('/api/community')).data.polls.some((entry) => entry.slug === poll.slug);
@@ -134,7 +149,7 @@ test('closed polls leave Community', async () => {
 });
 
 test('the site owner key can remove any poll', async () => {
-  const { data: poll } = await createPoll({ question: 'Remove me?', public: true });
+  const { data: poll } = await createPoll({ question: 'Remove me?' });
   const removed = await call(`/api/polls/${poll.slug}`, { method: 'DELETE', key: 'owner-secret' });
   assert.equal(removed.status, 204);
 });

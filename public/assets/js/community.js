@@ -1,6 +1,7 @@
 import { api } from './api.js';
 import { voterId } from './device.js';
 import {
+  authorName,
   renderChoices,
   renderResults,
   selectedChoices,
@@ -161,7 +162,10 @@ function renderItem(initial) {
     voteButton.hidden = name !== 'vote' || !poll.multiple;
     toggleButton.textContent = name === 'vote' ? 'See results' : 'Back to voting';
     toggleButton.hidden = name === 'results' && Boolean(poll.myVote);
-    meta.textContent = `${voteSummary(poll)} · ${timeLeft(poll)}${poll.multiple ? ' · Pick any' : ''}`;
+    const author = document.createElement('span');
+    author.className = 'feed-author';
+    author.textContent = authorName(poll);
+    meta.replaceChildren(author, ` · ${voteSummary(poll)} · ${timeLeft(poll)}${poll.multiple ? ' · Pick any' : ''}`);
     if (name === 'results') updateResults(results, poll, { fromZero: changed });
   }
 

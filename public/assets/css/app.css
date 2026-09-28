@@ -408,6 +408,11 @@ label.setting {
   font-size: 13px;
 }
 
+.author-field .input {
+  flex: 1 1 200px;
+  height: 44px;
+}
+
 .switch {
   appearance: none;
   flex: none;
@@ -1144,6 +1149,11 @@ label.setting {
   color: var(--ink-3);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
+}
+
+.feed-author {
+  color: var(--ink-2);
+  font-weight: 500;
 }
 
 .feed-question {

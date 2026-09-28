@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { rememberPoll, savedPolls, takeNotice } from './device.js';
+import { rememberPoll, saveName, savedName, savedPolls, takeNotice } from './device.js';
 import { isValidSlug, normalizeSlug } from './slug.js';
 import { $, formatRemaining, toast } from './ui.js';
 
@@ -31,6 +31,9 @@ function init() {
   if (/Mac|iPhone|iPad/.test(navigator.platform)) $('#mod-key').textContent = '⌘';
   // The Community page links here with ?public to start a public poll.
   if (new URLSearchParams(location.search).has('public')) $('#public').checked = true;
+  $('#author').value = savedName();
+  $('#public').addEventListener('change', showAuthorField);
+  showAuthorField();
 
   question.addEventListener('input', onQuestionInput);
   fitQuestion();
@@ -64,6 +67,10 @@ function init() {
 
   // Jump straight into typing on computers; on phones that would pop up the keyboard.
   if (matchMedia('(pointer: fine)').matches) question.focus();
+}
+
+function showAuthorField() {
+  $('#author-field').hidden = !$('#public').checked;
 }
 
 /* Question */
@@ -272,6 +279,7 @@ async function onSubmit(event) {
   try {
     const poll = await api('/api/polls', { method: 'POST', body: payload });
     rememberPoll(poll);
+    if (payload.public) saveName(payload.author);
     location.assign(`/${poll.slug}?new`);
   } catch (error) {
     showError(error.message);
@@ -288,6 +296,7 @@ function collect() {
       .filter(Boolean),
     multiple: $('#multiple').checked,
     public: $('#public').checked,
+    author: $('#public').checked ? $('#author').value.trim() : '',
     duration: Number(form.elements.duration.value),
     slug: $('#custom-link').open && slug ? slug : null,
   };

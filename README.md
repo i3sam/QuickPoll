@@ -18,7 +18,7 @@
 ## What it does
 
 - **Fast to make.** Type a question and a few options. Paste a list and each line becomes an option.
-- **Community.** Post a poll publicly and anyone can find it and vote on the Community page, sorted by newest or most popular. Voting happens right in the feed.
+- **Community.** Post a poll publicly, under a name or as Anonymous, and anyone can find it and vote on the Community page, sorted by newest or most popular. Voting happens right in the feed.
 - **Short links.** Every poll gets a one-word link like `quickpoll.essam.biz/maple`, or pick your own.
 - **Live results.** Bars grow as votes arrive, with no refreshing.
 - **One or many answers.** Single choice by default. Switch on multiple choice when you need it.
@@ -33,7 +33,7 @@ Each browser gets a random id the first time it votes, and the server records on
 
 ## Keeping Community clean
 
-Polls are private unless their creator switches on **Post to Community**. Each person can post 5 public polls an hour. Anyone can report a public poll, and once 3 different people report it, it leaves the feed (its link still works for people who have it). Closed polls leave the feed too.
+Polls are private unless their creator switches on **Post to Community**. A new site starts with a handful of starter polls (in `server/starter-polls.js`) so the page isn't empty; they're posted once, with no votes. Set `STARTER_POLLS=false` to skip them. Each person can post 5 public polls an hour. Anyone can report a public poll, and once 3 different people report it, it leaves the feed (its link still works for people who have it). Closed polls leave the feed too.
 
 Set `OWNER_KEY` to a long random string and you can close or delete any poll with it, for example:
 
@@ -81,6 +81,7 @@ docker run -p 3000:3000 -v quickpoll-data:/app/data quickpoll
 | `PORT` | `3000` | Port to listen on |
 | `DATA_DIR` | `data` | Where polls are saved when Redis isn't set up |
 | `OWNER_KEY` | | Lets you close or delete any poll, for moderation |
+| `STARTER_POLLS` | `true` | Set to `false` to start Community empty |
 | `TRUST_PROXY` | `false` | Set to `true` behind a reverse proxy, so rate limits see real client IPs |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | | Use Redis instead of the local file |
 

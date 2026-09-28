@@ -52,6 +52,15 @@ export function adminKeyFor(slug) {
   return savedPolls().find((poll) => poll.slug === slug)?.adminKey ?? null;
 }
 
+// The name last used on a public poll, filled in again next time.
+export function savedName() {
+  return read('quickpoll:name') ?? '';
+}
+
+export function saveName(name) {
+  write('quickpoll:name', name);
+}
+
 // Used to pass a one-off message to the next page, like "poll deleted".
 export function setNotice(value) {
   try {

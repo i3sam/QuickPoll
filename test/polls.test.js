@@ -11,6 +11,7 @@ test('cleans up a poll and drops empty options', () => {
     options: ['Tacos', 'Sushi'],
     multiple: false,
     public: false,
+    author: null,
     duration: 7 * 24 * 60 * 60,
     slug: null,
   });

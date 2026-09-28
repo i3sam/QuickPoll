@@ -20,6 +20,7 @@ export const LIMITS = Object.freeze({
   optionLength: 100,
   minOptions: 2,
   maxOptions: 10,
+  authorLength: 30,
 });
 
 export const COMMUNITY = Object.freeze({
@@ -36,6 +37,7 @@ export function loadConfig(env = process.env) {
     trustProxy: Boolean(env.VERCEL) || env.TRUST_PROXY === 'true',
     // Lets the site owner close or delete any poll, for moderation.
     ownerKey: env.OWNER_KEY || null,
+    starterPolls: env.STARTER_POLLS !== 'false',
   });
 }
 

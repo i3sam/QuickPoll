@@ -8,7 +8,10 @@
   <meta name="theme-color" content="#ffffff">
   <meta property="og:title" content="QuickPoll">
   <meta property="og:description" content="Make a poll in seconds. No sign up.">
-  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico?v=2" sizes="48x48">
+  <link rel="icon" href="/assets/favicon.svg?v=2" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2">
+  <link rel="manifest" href="/assets/site.webmanifest">
   <link rel="stylesheet" href="/assets/css/app.css">
   <script type="module" src="/assets/js/create.js"></script>
 </head>
@@ -56,6 +59,14 @@
           </span>
           <input type="checkbox" id="public" class="switch">
         </label>
+
+        <div id="author-field" class="setting author-field" hidden>
+          <label class="setting-text" for="author">
+            <strong>Post as</strong>
+            <small>Leave it empty to post as Anonymous.</small>
+          </label>
+          <input id="author" class="input" type="text" maxlength="30" autocomplete="nickname" placeholder="Anonymous">
+        </div>
 
         <label class="setting" for="multiple">
           <span class="setting-text">

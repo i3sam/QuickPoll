@@ -29,6 +29,13 @@ export function parsePollInput(body) {
     throw invalid('Pick how long voting stays open.');
   }
 
+  // A name only means something on public polls; empty means Anonymous.
+  const isPublic = body.public === true;
+  const author = isPublic ? cleanText(body.author) : '';
+  if (author.length > LIMITS.authorLength) {
+    throw invalid(`Keep your name under ${LIMITS.authorLength} characters.`);
+  }
+
   const hasSlug = body.slug !== undefined && body.slug !== null && body.slug !== '';
   if (hasSlug && !isValidSlug(body.slug)) {
     throw invalid('Links use 3 to 40 lowercase letters, numbers and dashes.');
@@ -38,7 +45,8 @@ export function parsePollInput(body) {
     question,
     options,
     multiple: body.multiple === true,
-    public: body.public === true,
+    public: isPublic,
+    author: author || null,
     duration,
     slug: hasSlug ? body.slug : null,
   };
@@ -78,6 +86,7 @@ export function toPublicPoll({ poll, counts, voters, myVote }, now = Date.now())
     question: poll.question,
     multiple: poll.multiple,
     public: poll.public === true,
+    author: poll.public ? (poll.author ?? null) : null,
     createdAt: poll.createdAt,
     closesAt: poll.closedAt ?? poll.closesAt,
     closed: isClosed(poll, now),

@@ -80,6 +80,10 @@ export function voteSummary(poll) {
   return `${poll.voters.toLocaleString()} ${poll.voters === 1 ? 'person' : 'people'} voted`;
 }
 
+export function authorName(poll) {
+  return poll.author ?? 'Anonymous';
+}
+
 export function timeLeft(poll, now = Date.now()) {
   return poll.closed ? 'Closed' : `${formatRemaining(poll.closesAt - now)} left`;
 }

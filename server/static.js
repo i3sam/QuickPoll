@@ -11,6 +11,7 @@ const PUBLIC_DIR = fileURLToPath(new URL('../public/', import.meta.url));
 const CONTENT_TYPES = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
+  '.ico': 'image/x-icon',
   '.js': 'text/javascript; charset=utf-8',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
@@ -42,6 +43,7 @@ export async function serveStatic(req, res, pathname) {
 function resolvePublicPath(pathname) {
   if (pathname === '/') return path.join(PUBLIC_DIR, 'index.html');
   if (pathname === '/robots.txt') return path.join(PUBLIC_DIR, 'robots.txt');
+  if (pathname === '/favicon.ico') return path.join(PUBLIC_DIR, 'favicon.ico');
   if (pathname === '/community') return path.join(PUBLIC_DIR, 'community.html');
   if (isValidSlug(pathname.slice(1))) return path.join(PUBLIC_DIR, 'poll.html');
 

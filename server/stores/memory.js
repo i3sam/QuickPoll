@@ -8,6 +8,7 @@ import { RateLimiter } from '../rate-limit.js';
 // so they survive a restart. Right for one process; use Redis for more.
 export class MemoryStore {
   #polls = new Map();
+  #seeded = false;
   #file;
   #saving = null;
   #dirty = false;
@@ -27,7 +28,8 @@ export class MemoryStore {
       if (error.code === 'ENOENT') return;
       throw error;
     }
-    for (const { poll, counts, voters, reports = [] } of saved) {
+    this.#seeded = saved.seeded === true;
+    for (const { poll, counts, voters, reports = [] } of saved.polls ?? []) {
       this.#polls.set(poll.slug, { poll, counts, voters: new Map(voters), reports: new Set(reports) });
     }
   }
@@ -99,6 +101,14 @@ export class MemoryStore {
     this.#save();
   }
 
+  // True only the first time it's called, so starter polls are added once.
+  async claimSeed() {
+    if (this.#seeded) return false;
+    this.#seeded = true;
+    this.#save();
+    return true;
+  }
+
   async sweep(now = Date.now()) {
     let removed = 0;
     for (const [slug, entry] of this.#polls) {
@@ -137,12 +147,15 @@ export class MemoryStore {
     try {
       while (this.#dirty) {
         this.#dirty = false;
-        const data = [...this.#polls.values()].map(({ poll, counts, voters, reports }) => ({
-          poll,
-          counts,
-          voters: [...voters],
-          reports: [...reports],
-        }));
+        const data = {
+          seeded: this.#seeded,
+          polls: [...this.#polls.values()].map(({ poll, counts, voters, reports }) => ({
+            poll,
+            counts,
+            voters: [...voters],
+            reports: [...reports],
+          })),
+        };
         const temp = `${this.#file}.tmp`;
         await fs.writeFile(temp, JSON.stringify(data));
         await fs.rename(temp, this.#file);

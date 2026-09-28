@@ -126,6 +126,11 @@ export class RedisStore {
     }
   }
 
+  // True only for the first caller ever, so starter polls are added once.
+  async claimSeed() {
+    return (await this.#redis.set('community:seeded', 1, { nx: true })) === 'OK';
+  }
+
   async sweep() {
     return 0;
   }
