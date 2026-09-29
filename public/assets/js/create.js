@@ -157,14 +157,7 @@ function relabel() {
   addButton.hidden = rows.length >= MAX_OPTIONS;
 }
 
-// Typing in the last option adds a fresh empty one below it, so there's
-// always room for one more without pressing anything.
-function onOptionInput(event) {
-  const rows = optionRows();
-  const row = event.target.closest('.option-row');
-  if (row === rows.at(-1) && event.target.value.trim() !== '' && rows.length < MAX_OPTIONS) {
-    addOption();
-  }
+function onOptionInput() {
   hideError();
 }
 
@@ -175,10 +168,11 @@ function onOptionKeydown(event) {
   const inputs = optionInputs();
   const index = inputs.indexOf(event.target);
 
+  // Enter moves down the list. New options only come from the Add option button.
   if (event.key === 'Enter') {
     event.preventDefault();
     if (index < inputs.length - 1) inputs[index + 1].focus();
-    else if (inputs.length < MAX_OPTIONS) addOption().focus();
+    else if (!addButton.hidden) addButton.focus();
     else submitButton.focus();
   } else if (event.key === 'Backspace' && event.target.value === '' && inputs.length > MIN_OPTIONS && index > 0) {
     event.preventDefault();
@@ -222,8 +216,6 @@ function onOptionPaste(event) {
     }
   }
 
-  const rows = optionRows();
-  if (rows.at(-1).querySelector('input').value.trim() !== '' && rows.length < MAX_OPTIONS) addOption();
   row.querySelector('input').focus();
 }
 
